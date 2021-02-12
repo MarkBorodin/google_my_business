@@ -8,16 +8,14 @@ from selenium import webdriver
 
 class Spider(object):
 
-    def __init__(self, company):
-        self.company = company
-
-    def get_data(self):
+    def get_data(self, company):
         """start web browser with selenium and get data"""
 
         # make a request url to google
-        url = 'https://www.google.com/search?q=' + ''.join(self.company)
+        url = 'https://www.google.com/search?q=' + ''.join(company)
 
-        self.results = {} # noqa
+        results = dict()
+        results['company'] = company
 
         # send a request and get soup
         try:
@@ -25,7 +23,7 @@ class Spider(object):
             chrome_options.headless = True
             browser = webdriver.Chrome('chromedriver', chrome_options=chrome_options)
             browser.get(url)
-            time.sleep(5)
+            time.sleep(7)
             html = browser.page_source
             browser.close()
             soup = BeautifulSoup(html, 'lxml')
@@ -33,88 +31,110 @@ class Spider(object):
             # get the required data:
 
             try:
-                self.results['my_business'] = soup.find('div', class_='ifM9O')
-                if self.results['my_business']:
-                    self.results['my_business_yes_no'] = 't'
+                results['my_business'] = soup.find('div', class_='ifM9O')
+                if results['my_business']:
+                    results['my_business_yes_no'] = 't'
                     print('mybusiness is present')
+
+                    try:
+                        results['url'] = soup.find('a', class_='ab_button').get('href').strip()
+                        if results['url'] != '#':
+                            results['url_yes_no'] = 't'
+                            print('url is present')
+                        else:
+                            results['url'] = None
+                            results['url_yes_no'] = 'f'
+                    except Exception as e:
+                        print("no website")
+                        results['url'] = None
+                        results['url_yes_no'] = 'f'
+
+                    try:
+                        results['phone'] = soup.find_all('span', class_='LrzXr zdqRlf kno-fv')[-1].text.strip()
+                        if results['phone']:
+                            results['phone_yes_no'] = 't'
+                            print('phone is present')
+                    except Exception as e:
+                        print("no phone")
+                        results['phone'] = None
+                        results['phone_yes_no'] = 'f'
+
+                    try:
+                        results['rating'] = float(
+                            soup.find_all('span', class_='Aq14fc')[-1].text.strip().replace(',', '.'))
+                        if results['rating']:
+                            results['rating_yes_no'] = 't'
+                            print('rating is present')
+                    except Exception as e:
+                        try:
+                            results['rating'] = float(
+                                soup.find('span', class_='inaKse G5rmf').text.strip().split(sep='/')[0])
+                            if results['rating']:
+                                results['rating_yes_no'] = 't'
+                                print('rating is present')
+                        except Exception as e:
+                            print("no rating")
+                            results['rating'] = None
+                            results['rating_yes_no'] = 'f'
+
+                    try:
+                        results['nr_of_ratings'] = \
+                            soup.find_all('span', class_='hqzQac')[-1].text.strip().split(sep=' ')[0]
+                        if results['nr_of_ratings']:
+                            results['nr_of_ratings_yes_no'] = 't'
+                            print('nr_of_ratings is present')
+                    except Exception as e:
+                        try:
+                            results['nr_of_ratings'] = \
+                                soup.find('span', class_='inaKse KM6XSd').text.strip()
+                            results['nr_of_ratings'] = ''.join(i for i in results['nr_of_ratings'] if i.isdigit())
+                            if results['nr_of_ratings']:
+                                results['nr_of_ratings_yes_no'] = 't'
+                                print('nr_of_ratings is present')
+                        except Exception as e:
+                            print("no nr_of_ratings")
+                            results['nr_of_ratings'] = None
+                            results['nr_of_ratings_yes_no'] = 'f'
+
+                    self.write_data_to_db(results)
+
+                    print(f"{company}:")
+                    print(f"my_business_yes_no: {results['my_business_yes_no']}")
+                    print(f"url_yes_no: {results['url_yes_no']}")
+                    print(f"url: {results['url']}")
+                    print(f"phone_yes_no: {results['phone_yes_no']}")
+                    print(f"phone: {results['phone']}")
+                    print(f"rating: {results['rating']}")
+                    print(f"rating_yes_no: {results['rating_yes_no']}")
+                    print(f"nr_of_ratings: {results['nr_of_ratings']}")
+                    print(f"nr_of_ratings_yes_no: {results['nr_of_ratings_yes_no']}")
+
                 else:
-                    print("no my_business")
-                    self.results['my_business_yes_no'] = 'f'
-            except Exception as e:
-                print("no my_business")
-                self.results['my_business_yes_no'] = 'f'
+                    print(f"{company}: no my_business")
 
-            try:
-                self.results['url'] = soup.find('a', class_='ab_button').get('href').strip()
-                if self.results['url']:
-                    self.results['url_yes_no'] = 't'
-                    print('url is present')
             except Exception as e:
-                print("no website")
-                self.results['url'] = 'NULL'
-                self.results['url_yes_no'] = 'f'
-
-            try:
-                self.results['phone'] = soup.find_all('span', class_='LrzXr zdqRlf kno-fv')[-1].text.strip()
-                if self.results['phone']:
-                    self.results['phone_yes_no'] = 't'
-                    print('phone is present')
-            except Exception as e:
-                print("no phone")
-                self.results['phone'] = 'NULL'
-                self.results['phone_yes_no'] = 'f'
-
-            try:
-                self.results['rating'] = float(soup.find_all('span', class_='Aq14fc')[-1].text.strip().replace(',', '.'))
-                if self.results['rating']:
-                    self.results['rating_yes_no'] = 't'
-                    print('rating is present')
-            except Exception as e:
-                print("no rating")
-                self.results['rating'] = 'NULL'
-                self.results['rating_yes_no'] = 'f'
-
-            try:
-                self.results['nr_of_ratings'] = soup.find_all('span', class_='hqzQac')[-1].text.strip().split(sep=' ')[0]
-                if self.results['nr_of_ratings']:
-                    self.results['nr_of_ratings_yes_no'] = 't'
-                    print('nr_of_ratings is present')
-            except Exception as e:
-                print("no nr_of_ratings")
-                self.results['nr_of_ratings'] = 'NULL'
-                self.results['nr_of_ratings_yes_no'] = 'f'
-
-            print(f"{self.company}:")
-            print(f"my_business_yes_no: {self.results['my_business_yes_no']}")
-            print(f"url_yes_no: {self.results['url_yes_no']}")
-            print(f"url: {self.results['url']}")
-            print(f"phone_yes_no: {self.results['phone_yes_no']}")
-            print(f"phone: {self.results['phone']}")
-            print(f"rating: {self.results['rating']}")
-            print(f"rating_yes_no: {self.results['rating_yes_no']}")
-            print(f"nr_of_ratings: {self.results['nr_of_ratings']}")
-            print(f"nr_of_ratings_yes_no: {self.results['nr_of_ratings_yes_no']}")
+                print(f"{company}: no my_business")
 
         except Exception as e:
             print(e)
 
-    def write_data_to_db(self):
-        """write data to db"""
-
+    def write_data_to_db(self, results):
+        """write data to data base"""
         self.open_db()
 
         # write data to db
         self.cur.execute(
-            """INSERT INTO my_business_entry (url_yes_no, url, phone_yes_no, phone, rating, nr_of_ratings, myBusiness, company)
+            """INSERT INTO my_business_entry (
+            url_yes_no, url, phone_yes_no, phone, rating, nr_of_ratings, myBusiness, company)
                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", (
-                str(self.results['url_yes_no']),
-                str(self.results['url']),
-                str(self.results['phone_yes_no']),
-                str(self.results['phone']),
-                str(self.results['rating']),
-                str(self.results['nr_of_ratings']),
-                str(self.results['my_business_yes_no']),
-                str(self.company),
+                results['url_yes_no'],
+                results['url'],
+                results['phone_yes_no'],
+                results['phone'],
+                results['rating'],
+                results['nr_of_ratings'],
+                results['my_business_yes_no'],
+                results['company'],
             )
         )
 
@@ -147,10 +167,7 @@ if __name__ == '__main__':
     company = sys.argv[1]
 
     # create object
-    spider = Spider(company)
+    spider = Spider()
 
     # get data
-    spider.get_data()
-
-    # write data to the db
-    spider.write_data_to_db()
+    spider.get_data(company)
