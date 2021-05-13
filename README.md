@@ -76,7 +76,7 @@ python main_serial.py "file_name"
 for example:
 
 ```
-python main.py "Zefix-Crawl-Test.xlsx"
+python main_serial.py "Zefix-Crawl-Test.xlsx"
 ```
 Сompany names should be in the first column.
 The data will be written to the database

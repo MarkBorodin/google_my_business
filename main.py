@@ -31,7 +31,7 @@ class Spider(object):
             # get the required data:
 
             try:
-                results['my_business'] = soup.find('div', class_='ifM9O')
+                results['my_business'] = soup.find('div', class_='liYKde g VjDLd')
                 if results['my_business']:
                     results['my_business_yes_no'] = 't'
                     print('mybusiness is present')
